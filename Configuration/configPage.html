@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>FastSTRM</title>
+</head>
+<body>
+<div id="FastStrmConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="FastStrmConfigForm">
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="PreferredSubtitleLanguages" label="Preferred subtitle languages" />
+                    <div class="fieldDescription">
+                        Comma separated language codes, in order of preference, used to pick the default
+                        subtitle track when the client does not request one (for example: en, eng, zh).
+                        A track flagged as default in the media always wins.
+                    </div>
+                </div>
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript">
+        (function () {
+            var pluginId = '7b2049e3-8551-409d-8c11-92b1552b7156';
+
+            document.querySelector('#FastStrmConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    document.querySelector('#PreferredSubtitleLanguages').value = config.PreferredSubtitleLanguages || '';
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#FastStrmConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.PreferredSubtitleLanguages = document.querySelector('#PreferredSubtitleLanguages').value;
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+                return false;
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>

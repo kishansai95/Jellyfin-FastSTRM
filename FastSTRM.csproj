@@ -11,4 +11,8 @@
     <PackageReference Include="Jellyfin.Controller" Version="10.11.11" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
 </Project>
