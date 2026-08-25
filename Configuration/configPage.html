@@ -9,11 +9,17 @@
         <div class="content-primary">
             <form id="FastStrmConfigForm">
                 <div class="inputContainer">
-                    <input is="emby-input" type="text" id="PreferredSubtitleLanguages" label="Preferred subtitle languages" />
+                    <input is="emby-input" type="text" id="PreferredAudioLanguages" label="Preferred audio languages" />
                     <div class="fieldDescription">
                         Comma separated language codes, in order of preference, used to pick the default
-                        subtitle track when the client does not request one (for example: en, eng, zh).
-                        A track flagged as default in the media always wins.
+                        audio track when the client does not request one (for example: en, ta).
+                    </div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="PreferredSubtitleLanguages" label="Preferred subtitle languages" />
+                    <div class="fieldDescription">
+                        Same, for the default subtitle track. If no track matches, the track flagged as
+                        default in the media is used, then the first external track.
                     </div>
                 </div>
                 <div>
@@ -31,6 +37,7 @@
             document.querySelector('#FastStrmConfigPage').addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    document.querySelector('#PreferredAudioLanguages').value = config.PreferredAudioLanguages || '';
                     document.querySelector('#PreferredSubtitleLanguages').value = config.PreferredSubtitleLanguages || '';
                     Dashboard.hideLoadingMsg();
                 });
@@ -40,6 +47,7 @@
                 e.preventDefault();
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.PreferredAudioLanguages = document.querySelector('#PreferredAudioLanguages').value;
                     config.PreferredSubtitleLanguages = document.querySelector('#PreferredSubtitleLanguages').value;
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
