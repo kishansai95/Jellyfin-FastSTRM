@@ -1,24 +1,53 @@
-Jellyfin FastSTRM Plugin
-这是一个专为 Jellyfin 打造的 .strm 文件播放加速插件，完美解决网页端播放直链时由于转码探测导致的漫长起播延迟问题。
+# Jellyfin FastSTRM Plugin
 
-使用方法
+A Jellyfin plugin that speeds up playback of `.strm` files. It removes the long startup delay caused by the server probing the remote direct link for transcoding decisions before playback begins.
 
-方式一：直接下载安装（推荐）
+## How it works
 
-进入本项目的 Releases 页面（ https://github.com/mmyysnd/Jellyfin-FastSTRM/releases ）。下载最新编译好的 FastSTRM.dll 文件。
-将下载的 FastSTRM.dll 文件放入你 Jellyfin 服务端数据目录下的 plugins/FastSTRM 文件夹内（如果没有 FastSTRM 文件夹，请自行新建）。
-重启你的 Jellyfin 服务程序。
-进入 Jellyfin 的“控制台” -> “插件”页面，确认 FastSTRM 插件已成功加载。
+The plugin intercepts `/PlaybackInfo` requests. When the requested item is a `.strm` video, it reads the direct http(s) URL from the file and returns a media source marked as direct play (no transcoding, no probing) instead of letting Jellyfin analyse the remote stream. It also rewrites external subtitle delivery URLs so they carry a valid auth token, and chooses the default audio and subtitle tracks.
 
-方式二：下载源码自行编译
-如果你想自行编译此项目，请确保你已经安装了 .NET 9.0 SDK。
+## Installation
 
-```# 克隆仓库
-git clone https://github.com/mmyysnd/Jellyfin-FastSTRM.git
+### Option 1: Download the prebuilt DLL (recommended)
+
+1. Download the latest `FastSTRM.dll` from the [Releases](https://github.com/mmyysnd/Jellyfin-FastSTRM/releases) page.
+2. Put it in the `plugins/FastSTRM` folder inside your Jellyfin server data directory (create the `FastSTRM` folder if it does not exist):
+   - Docker: `/config/plugins/FastSTRM`
+   - Linux (native): `/var/lib/jellyfin/plugins/FastSTRM`
+   - Windows (tray/portable): `%LOCALAPPDATA%\jellyfin\plugins\FastSTRM`
+   - Windows (service): `C:\ProgramData\Jellyfin\Server\plugins\FastSTRM`
+3. Restart the Jellyfin server.
+4. Open Dashboard -> Plugins and confirm that FastSTRM is loaded.
+
+### Option 2: Build from source
+
+Requires the .NET 9.0 SDK.
+
+```bash
+git clone https://github.com/kishansai95/Jellyfin-FastSTRM.git
 cd Jellyfin-FastSTRM
-
-# 编译生成 dll 文件
-
 dotnet build -c Release
 ```
-编译成功后，在 bin/Release/net9.0/ 目录下找到 FastSTRM.dll 文件，按照上方“方式一”的部署步骤，将其放进 Jellyfin 的插件目录并重启服务即可。
+
+The DLL is produced at `bin/Release/net9.0/FastSTRM.dll`. Deploy it as described in Option 1.
+
+## Configuration
+
+Dashboard -> Plugins -> FastSTRM. Both fields take comma separated language codes in order of preference; matching is by prefix, so `en` matches `en` and `eng`, and `ta` matches `ta` and `tam`.
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| Preferred audio languages | `en,ta` | Language order used to pick the default audio track. |
+| Preferred subtitle languages | `en,ta` | Language order used to pick the default subtitle track. |
+
+Track selection order, first match wins:
+
+- Audio: index requested by the client -> preferred language -> track flagged default in the media -> first audio track.
+- Subtitle: index requested by the client -> preferred language -> track flagged default in the media -> first external track -> first subtitle track.
+
+Leaving a field empty skips the language step and falls back to the media's own default track.
+
+## Requirements
+
+- Jellyfin server 10.11.x
+- .NET 9.0 SDK (only to build from source)
