@@ -39,6 +39,12 @@ namespace FastSTRM
         /// Comma separated language codes used to pick the default subtitle track,
         /// in order of preference, when the client does not request one.
         /// </summary>
-        public string PreferredSubtitleLanguages { get; set; } = "en";
+        public string PreferredSubtitleLanguages { get; set; } = "en,ta";
+
+        /// <summary>
+        /// Comma separated language codes used to pick the default audio track,
+        /// in order of preference, when the client does not request one.
+        /// </summary>
+        public string PreferredAudioLanguages { get; set; } = "en,ta";
     }
 }

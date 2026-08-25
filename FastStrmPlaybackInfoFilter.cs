@@ -32,15 +32,28 @@ namespace FastSTRM
             _logger = logger;
         }
 
-        private static IEnumerable<string> GetPreferredSubtitleLanguages()
+        private static IEnumerable<string> ParseLanguages(string? configured)
         {
-            var configured = FastStrmPlugin.Instance?.Configuration.PreferredSubtitleLanguages;
             if (string.IsNullOrWhiteSpace(configured))
             {
                 return Array.Empty<string>();
             }
 
             return configured.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        private static MediaStream? PickByLanguage(List<MediaStream> streams, string? preferredLanguages)
+        {
+            foreach (var language in ParseLanguages(preferredLanguages))
+            {
+                var match = streams.FirstOrDefault(s => s.Language != null && s.Language.StartsWith(language, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+
+            return null;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -178,21 +191,26 @@ namespace FastSTRM
                 }
             }
 
-            var defaultAudioIndex = requestedAudioIndex ?? (mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Audio && s.IsDefault)
-                               ?? mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Audio))?.Index;
+            var config = FastStrmPlugin.Instance?.Configuration;
+
+            int? defaultAudioIndex = requestedAudioIndex;
+            if (defaultAudioIndex == null)
+            {
+                var audioTracks = mediaStreams.Where(s => s.Type == MediaStreamType.Audio).ToList();
+                var defaultAudio = PickByLanguage(audioTracks, config?.PreferredAudioLanguages)
+                                   ?? audioTracks.FirstOrDefault(s => s.IsDefault)
+                                   ?? audioTracks.FirstOrDefault();
+                defaultAudioIndex = defaultAudio?.Index;
+            }
 
             int? defaultSubtitleIndex = requestedSubtitleIndex;
             if (defaultSubtitleIndex == null)
             {
                 var subtitles = mediaStreams.Where(s => s.Type == MediaStreamType.Subtitle).ToList();
-                var defaultSubtitle = subtitles.FirstOrDefault(s => s.IsDefault);
-                foreach (var language in GetPreferredSubtitleLanguages())
-                {
-                    if (defaultSubtitle != null) break;
-                    defaultSubtitle = subtitles.FirstOrDefault(s => s.Language != null && s.Language.StartsWith(language, StringComparison.OrdinalIgnoreCase));
-                }
-
-                defaultSubtitle ??= subtitles.FirstOrDefault(s => s.IsExternal) ?? subtitles.FirstOrDefault();
+                var defaultSubtitle = PickByLanguage(subtitles, config?.PreferredSubtitleLanguages)
+                                      ?? subtitles.FirstOrDefault(s => s.IsDefault)
+                                      ?? subtitles.FirstOrDefault(s => s.IsExternal)
+                                      ?? subtitles.FirstOrDefault();
                 defaultSubtitleIndex = defaultSubtitle?.Index;
             }
 
