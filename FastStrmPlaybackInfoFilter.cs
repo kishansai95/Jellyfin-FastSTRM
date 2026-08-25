@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -29,6 +30,17 @@ namespace FastSTRM
             _libraryManager = libraryManager;
             _mediaSourceManager = mediaSourceManager;
             _logger = logger;
+        }
+
+        private static IEnumerable<string> GetPreferredSubtitleLanguages()
+        {
+            var configured = FastStrmPlugin.Instance?.Configuration.PreferredSubtitleLanguages;
+            if (string.IsNullOrWhiteSpace(configured))
+            {
+                return Array.Empty<string>();
+            }
+
+            return configured.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -172,10 +184,15 @@ namespace FastSTRM
             int? defaultSubtitleIndex = requestedSubtitleIndex;
             if (defaultSubtitleIndex == null)
             {
-                var defaultSubtitle = mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle && s.IsDefault)
-                                      ?? mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle && s.Language != null && (s.Language.StartsWith("zh", StringComparison.OrdinalIgnoreCase) || s.Language.StartsWith("chi", StringComparison.OrdinalIgnoreCase)))
-                                      ?? mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle && s.IsExternal)
-                                      ?? mediaStreams.FirstOrDefault(s => s.Type == MediaStreamType.Subtitle);
+                var subtitles = mediaStreams.Where(s => s.Type == MediaStreamType.Subtitle).ToList();
+                var defaultSubtitle = subtitles.FirstOrDefault(s => s.IsDefault);
+                foreach (var language in GetPreferredSubtitleLanguages())
+                {
+                    if (defaultSubtitle != null) break;
+                    defaultSubtitle = subtitles.FirstOrDefault(s => s.Language != null && s.Language.StartsWith(language, StringComparison.OrdinalIgnoreCase));
+                }
+
+                defaultSubtitle ??= subtitles.FirstOrDefault(s => s.IsExternal) ?? subtitles.FirstOrDefault();
                 defaultSubtitleIndex = defaultSubtitle?.Index;
             }
 
